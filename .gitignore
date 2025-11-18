@@ -10,6 +10,9 @@ __pycache__/
 .venv/
 venv/
 
+# API_KEYS
+*_api_key*.*
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,18 @@
+name: music_lyrics_tools
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - streamlit>=1.39.0
+  - openai
+  - playwright>=1.48.0
+  - pandas
+  - requests
+  - langchain
+  - langchain-community
+  - python-dotenv>=1.0.0
+  - pip
+  - pip:
+    - groq>=0.11.0
+    - youtube-transcript-api>=0.6.2

@@ -1,0 +1,6 @@
+# conda create 
+
+conda create --name music_lyrics_tools python=3.13 streamlit openai playwright pandas requests langchain langchain-community python-dotenv groq youtube-transcript-api
+
+# conda activate music_lyrics_tools
+
