@@ -1,6 +1,6 @@
 # What Do Those Song Lyrics Mean? 🎵
 
-A Streamlit app that finds song lyrics from YouTube and interprets them using **free AI** — works 100% locally (no API key needed) OR optionally with Groq cloud for faster/better results.
+A Streamlit app that finds song lyrics from YouTube/YouTube Music and interprets them using **free AI** — works 100% locally (no API key needed) OR optionally with Groq cloud for faster/better results.
 
 Built following the **7D Agile** methodology: Discover, Define, Design, Develop, Debug, Deploy, Drive.
 
@@ -8,12 +8,18 @@ Built following the **7D Agile** methodology: Discover, Define, Design, Develop,
 
 ## ✨ Features
 
-- 🔍 **Smart Search**: Enter "Artist - Song Name" or paste YouTube/YouTube Music URLs
-- 🎬 **Auto Scraping**: Extracts captions/lyrics directly from YouTube videos
+- 🔍 **Smart Search**: Enter "Artist - Song Name" or paste YouTube/YouTube Music/Spotify URLs
+- 🎬 **Auto Scraping**: 
+  - YouTube videos with subtitles → Direct caption extraction
+  - YouTube Music → Metadata extraction + AZLyrics search
+  - Spotify → Track info + AZLyrics search
+  - Manual search → AZLyrics lookup
 - 🤖 **Two AI Modes**:
-  - **Local CPU Mode** (default): Runs 100% locally, no API key needed (~80MB model download on first run)
-  - **Cloud Mode** (optional): Use Groq's free API for faster/better interpretations
-- 🎨 **Clean UI**: Streamlit interface with expandable lyrics view
+  - **Local CPU Mode** (default): Runs 100% locally, no API key needed (small model, slower, lower quality)
+  - **Cloud Mode** (recommended): Use Groq's free API for **much better** interpretations
+- 🖥️ **Hardware Detection**: Auto-detects CPU cores, RAM, and GPU availability
+- 🎛️ **Model Selection**: Choose from 5 preset models or use custom HuggingFace model IDs
+- 🎨 **Clean UI**: Streamlit interface with tabs for search/manual input
 - 💾 **Privacy First**: Everything runs locally by default; optional cloud mode
 
 ---
@@ -22,7 +28,7 @@ Built following the **7D Agile** methodology: Discover, Define, Design, Develop,
 
 ### Prerequisites
 - **Python 3.11+**
-- **Optional**: Groq API Key for cloud mode (free at [console.groq.com](https://console.groq.com))
+- **Recommended**: Groq API Key for better AI quality (free at [console.groq.com](https://console.groq.com))
 
 ### Installation
 
@@ -54,7 +60,7 @@ The script will:
 4. Launch the Streamlit app
 5. Open your browser automatically
 
-**⚠️ First Run Note**: Dependencies are ~2GB total (PyTorch + transformers). The local AI model (~80MB) downloads automatically on first use in local mode.
+**⚠️ First Run Note**: Dependencies are ~2GB total (PyTorch + transformers). The local AI model (~308MB) downloads automatically on first use in local mode.
 
 ---
 
@@ -86,35 +92,59 @@ streamlit run app.py
 
 ## 📖 Usage
 
-### Local Mode (No API Key Needed - Default)
+### Cloud Mode (Recommended for Best Quality) ⭐
+
+**Why Cloud Mode?** The local CPU models produce poor quality output (slow, often nonsensical). Groq's cloud API is:
+- ✅ **Free** (generous limits: 30 req/min, 6000 tokens/min)
+- ✅ **Fast** (1-3 seconds vs 10-30 seconds)
+- ✅ **High Quality** (uses llama-3.1-70b-versatile)
+- ✅ **No GPU Needed**
+
+1. **Get Your Free Groq API Key**:
+   - Visit [console.groq.com](https://console.groq.com)
+   - Sign up (free, no credit card required)
+   - Create an API key (starts with `gsk_`)
+   - Copy the key
+
+2. **Launch the App**:
+   - Run via script OR `streamlit run app.py`
+   - App opens at `http://localhost:8501`
+
+3. **Enter API Key** in the sidebar (or add to `.env` file)
+
+4. **Keep "Use Local CPU Model" unchecked**
+
+5. **Search for Lyrics**:
+   - Type "Artist - Song Name" (e.g., `Pink Floyd - Time`)
+   - OR paste a YouTube URL (e.g., `https://youtu.be/dQw4w9WgXcQ`)
+   - OR paste a YouTube Music URL (e.g., `https://music.youtube.com/watch?v=...`)
+
+6. **Get Interpretation**:
+   - Click "🔍 Get Lyrics & Interpret"
+   - View lyrics and high-quality AI interpretation
+
+### Local Mode (No API Key - Lower Quality)
+
+**⚠️ Note**: Local CPU models provide **poor quality** output and are **very slow** without a GPU. Only use this if you cannot access Groq's free cloud API.
 
 1. **Launch the App**:
    - Run via script OR `streamlit run app.py`
    - App opens at `http://localhost:8501`
 
-2. **Check "Use Local CPU Model"** in sidebar (enabled by default)
+2. **Check "Use Local CPU Model"** in sidebar
 
-3. **Search for Lyrics**:
-   - Type "Artist - Song Name" (e.g., `Radiohead - Karma Police`)
-   - OR paste a YouTube URL (e.g., `https://youtu.be/dQw4w9WgXcQ`)
+3. **Select Model** (or use custom HuggingFace ID):
+   - `flan-t5-small` (308MB) - Fastest but lowest quality
+   - `flan-t5-base` (990MB) - Better quality, slower
+   - `flan-t5-large` (2.9GB) - Best local quality, very slow on CPU
 
-4. **Get Interpretation**:
+4. **Search for Lyrics** (same as cloud mode)
+
+5. **Get Interpretation**:
    - Click "🔍 Get Lyrics & Interpret"
-   - First run: downloads ~80MB model (one-time)
-   - View lyrics and AI interpretation
-
-### Cloud Mode (Optional - Better Quality)
-
-1. **Get Your Free Groq API Key**:
-   - Visit [console.groq.com](https://console.groq.com)
-   - Sign up (free tier is generous)
-   - Copy your API key (starts with `gsk_`)
-
-2. **Uncheck "Use Local CPU Model"** in sidebar
-
-3. **Enter API key** in the sidebar input
-
-4. **Search and interpret** as above (faster, better quality)
+   - First run: downloads model (one-time, ~308MB-2.9GB depending on selection)
+   - Expect 10-30 seconds processing time
+   - Quality will be limited compared to cloud mode
 
 ---
 
@@ -122,13 +152,13 @@ streamlit run app.py
 
 | Phase | Implementation |
 |-------|----------------|
-| **DISCOVER** | Research free LLM options (cloud + local), YouTube scraping methods |
-| **DEFINE** | Requirements: URL/song search, scraping, local AI fallback, no mandatory keys |
-| **DESIGN** | Modular: `scraper.py` + `app.py` with dual AI modes (local HF + Groq cloud) |
-| **DEVELOP** | Playwright scraper, local CPU model (flan-t5-small), Groq cloud option, Streamlit UI |
-| **DEBUG** | Error handling for missing captions, model loading, API failures |
-| **DEPLOY** | Setup scripts with PyTorch install, clear local vs cloud mode docs |
-| **DRIVE** | Future: GPU support, save interpretations, multi-lens analysis, batch processing |
+| **DISCOVER** | Research free LLM options (cloud + local), YouTube/AZLyrics scraping methods |
+| **DEFINE** | Requirements: URL/song search, multi-source scraping, local AI fallback, optional cloud |
+| **DESIGN** | Modular: `scraper_v2.py` + `hardware.py` + `app.py` with dual AI modes (local HF + Groq cloud) |
+| **DEVELOP** | yt-dlp subtitle extraction, AZLyrics scraping, hardware detection, model selection UI |
+| **DEBUG** | Fixed broken youtube-transcript-api, added fallback sources, improved error handling |
+| **DEPLOY** | Setup scripts with PyTorch install, clear cloud vs local mode docs |
+| **DRIVE** | Future: Genius API integration, GPU support, save interpretations, batch processing |
 
 ---
 
@@ -136,9 +166,10 @@ streamlit run app.py
 
 ```
 what-do-those-song-lyrics-mean-gui/
-├── app.py                    # Main Streamlit application with dual AI modes
-├── scraper.py                # YouTube scraping module
-├── requirements.txt          # Python dependencies (includes PyTorch CPU + transformers)
+├── app.py                    # Main Streamlit application v2.0
+├── scraper_v2.py             # Multi-source lyrics scraper (YouTube/AZLyrics)
+├── hardware.py               # Hardware detection & model recommendations
+├── requirements.txt          # Python dependencies
 ├── .env.example             # Optional API key template
 ├── song_meaning_gui.bat     # Windows launch script
 ├── song_meaning_gui.sh      # macOS/Linux launch script
@@ -153,51 +184,70 @@ what-do-those-song-lyrics-mean-gui/
 Create a `.env` file to set default mode:
 
 ```env
-# Optional: Set Groq key to default to cloud mode
+# Recommended: Set Groq key for better quality
 GROQ_API_KEY=your_groq_api_key_here
+
+# Optional: Add Genius API token for additional lyrics sources
+GENIUS_ACCESS_TOKEN=your_genius_token_here
 ```
 
-If not set, app defaults to local CPU mode (no key needed).
+If `GROQ_API_KEY` is not set, app defaults to local CPU mode (lower quality).
 
 ---
 
 ## 🛠️ Technical Details
 
+### Lyrics Sources
+1. **YouTube Subtitles** (yt-dlp) - Direct extraction from videos with captions
+2. **AZLyrics** (web scraping) - Free lyrics database, no API key required
+3. **Genius** (optional) - Requires free API token from [genius.com/api-clients](https://genius.com/api-clients)
+
 ### Dependencies
 - **streamlit**: Web UI framework
-- **groq** (optional): Free cloud LLM API client
-- **playwright**: Browser automation for YouTube search
-- **youtube-transcript-api**: Extract video captions
+- **groq**: Free cloud LLM API client (recommended)
+- **yt-dlp**: YouTube subtitle extraction
+- **beautifulsoup4 + lxml**: Web scraping for lyrics
 - **transformers**: Hugging Face models for local inference
 - **torch**: PyTorch CPU for local model execution
+- **psutil**: Hardware detection (CPU/RAM/GPU)
 - **python-dotenv**: Environment variable management
 
 ### AI Models
 
-#### Local Mode (Default)
-- **Model**: `google/flan-t5-small` (~80MB)
-- **Device**: CPU only (no GPU required)
-- **First Run**: Downloads model automatically
-- **Speed**: ~5-15 seconds per interpretation (CPU-dependent)
-- **Quality**: Good for basic analysis
-
-#### Cloud Mode (Optional)
+#### Cloud Mode (Recommended) ⭐
 - **Model**: `llama-3.1-70b-versatile` (Groq)
 - **Free Tier**: 30 requests/min, 6000 tokens/min
 - **Speed**: ~1-3 seconds per interpretation
 - **Quality**: Excellent, detailed analysis
+- **Setup**: Free API key at [console.groq.com](https://console.groq.com)
+
+#### Local Mode (Fallback)
+- **Models**: 5 presets + custom HuggingFace IDs
+  - `flan-t5-small` (~308MB) - Fast but low quality
+  - `flan-t5-base` (~990MB) - Better quality, slower
+  - `flan-t5-large` (~2.9GB) - Best local quality, very slow on CPU
+  - `flan-t5-xl` (~11GB) - Requires GPU
+  - `bart-large-cnn` (~1.6GB) - Alternative model
+- **Device**: CPU only (GPU auto-detected if available)
+- **First Run**: Downloads model automatically
+- **Speed**: ~10-30 seconds per interpretation (CPU-dependent)
+- **Quality**: Limited, often produces nonsensical output on CPU
+
+**⚠️ Performance Note**: Without a GPU, local models provide poor quality results. Cloud mode (Groq) is **strongly recommended** for usable output.
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "No transcript available"
-- Not all YouTube videos have captions
-- Try searching with "Artist - Song Name" to find lyric videos
-- Look for official music videos or lyric videos
+### "No transcript/lyrics available"
+- YouTube videos without subtitles → Try "Artist - Song Name" manual search
+- AZLyrics requires exact artist/song names → Check spelling
+- Try adding video to YouTube Music and using that URL
 
-### "Could not find video"
-- Playwright search may time out
+### AI Output is Nonsense (Local Mode)
+- **Solution**: Use Groq cloud mode instead (free, much better quality)
+- Local CPU models are not powerful enough for quality analysis
+- If you must use local: Try `flan-t5-base` or `flan-t5-large` (slower but better)
 - Try pasting the YouTube URL directly
 - Check your internet connection
 
