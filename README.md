@@ -1,6 +1,6 @@
 # What Do Those Song Lyrics Mean? 🎵
 
-A Streamlit app that finds song lyrics from YouTube and interprets them using **free AI** (Groq). No paywalls, no ads—just search by song name or paste a YouTube link.
+A Streamlit app that finds song lyrics from YouTube and interprets them using **free AI** — works 100% locally (no API key needed) OR optionally with Groq cloud for faster/better results.
 
 Built following the **7D Agile** methodology: Discover, Define, Design, Develop, Debug, Deploy, Drive.
 
@@ -10,9 +10,11 @@ Built following the **7D Agile** methodology: Discover, Define, Design, Develop,
 
 - 🔍 **Smart Search**: Enter "Artist - Song Name" or paste YouTube/YouTube Music URLs
 - 🎬 **Auto Scraping**: Extracts captions/lyrics directly from YouTube videos
-- 🤖 **Free AI**: Uses Groq's free LLM API (no OpenAI subscription needed)
+- 🤖 **Two AI Modes**:
+  - **Local CPU Mode** (default): Runs 100% locally, no API key needed (~80MB model download on first run)
+  - **Cloud Mode** (optional): Use Groq's free API for faster/better interpretations
 - 🎨 **Clean UI**: Streamlit interface with expandable lyrics view
-- 💾 **Privacy First**: API key stored in session only, never persisted
+- 💾 **Privacy First**: Everything runs locally by default; optional cloud mode
 
 ---
 
@@ -20,7 +22,7 @@ Built following the **7D Agile** methodology: Discover, Define, Design, Develop,
 
 ### Prerequisites
 - **Python 3.11+**
-- **Groq API Key** (free): Get one at [console.groq.com](https://console.groq.com)
+- **Optional**: Groq API Key for cloud mode (free at [console.groq.com](https://console.groq.com))
 
 ### Installation
 
@@ -47,10 +49,12 @@ chmod +x song_meaning_gui.sh
 
 The script will:
 1. Create a Python virtual environment
-2. Install all dependencies
+2. Install all dependencies (including PyTorch CPU + transformers)
 3. Install Playwright browsers
 4. Launch the Streamlit app
 5. Open your browser automatically
+
+**⚠️ First Run Note**: Dependencies are ~2GB total (PyTorch + transformers). The local AI model (~80MB) downloads automatically on first use in local mode.
 
 ---
 
@@ -82,22 +86,35 @@ streamlit run app.py
 
 ## 📖 Usage
 
+### Local Mode (No API Key Needed - Default)
+
+1. **Launch the App**:
+   - Run via script OR `streamlit run app.py`
+   - App opens at `http://localhost:8501`
+
+2. **Check "Use Local CPU Model"** in sidebar (enabled by default)
+
+3. **Search for Lyrics**:
+   - Type "Artist - Song Name" (e.g., `Radiohead - Karma Police`)
+   - OR paste a YouTube URL (e.g., `https://youtu.be/dQw4w9WgXcQ`)
+
+4. **Get Interpretation**:
+   - Click "🔍 Get Lyrics & Interpret"
+   - First run: downloads ~80MB model (one-time)
+   - View lyrics and AI interpretation
+
+### Cloud Mode (Optional - Better Quality)
+
 1. **Get Your Free Groq API Key**:
    - Visit [console.groq.com](https://console.groq.com)
    - Sign up (free tier is generous)
    - Copy your API key (starts with `gsk_`)
 
-2. **Launch the App**:
-   - Run via script OR `streamlit run app.py`
-   - App opens at `http://localhost:8501`
+2. **Uncheck "Use Local CPU Model"** in sidebar
 
-3. **Search for Lyrics**:
-   - **Option A**: Type "Artist - Song Name" (e.g., `Radiohead - Karma Police`)
-   - **Option B**: Paste a YouTube URL (e.g., `https://youtu.be/dQw4w9WgXcQ`)
+3. **Enter API key** in the sidebar input
 
-4. **Get Interpretation**:
-   - Click "🔍 Get Lyrics & Interpret"
-   - View scraped lyrics and AI analysis
+4. **Search and interpret** as above (faster, better quality)
 
 ---
 
@@ -105,13 +122,13 @@ streamlit run app.py
 
 | Phase | Implementation |
 |-------|----------------|
-| **DISCOVER** | Research free LLM APIs (Groq), YouTube scraping methods |
-| **DEFINE** | Requirements: URL/song search, scraping, free AI, Streamlit UI |
-| **DESIGN** | Modular structure: `scraper.py` + `app.py` + Groq integration |
-| **DEVELOP** | Build scraper with Playwright, integrate Groq API, create UI |
-| **DEBUG** | Error handling for missing captions, invalid URLs, API failures |
-| **DEPLOY** | Setup scripts for Windows/Linux, clear documentation |
-| **DRIVE** | Future: Add Spotify metadata, save interpretations, multi-lens analysis |
+| **DISCOVER** | Research free LLM options (cloud + local), YouTube scraping methods |
+| **DEFINE** | Requirements: URL/song search, scraping, local AI fallback, no mandatory keys |
+| **DESIGN** | Modular: `scraper.py` + `app.py` with dual AI modes (local HF + Groq cloud) |
+| **DEVELOP** | Playwright scraper, local CPU model (flan-t5-small), Groq cloud option, Streamlit UI |
+| **DEBUG** | Error handling for missing captions, model loading, API failures |
+| **DEPLOY** | Setup scripts with PyTorch install, clear local vs cloud mode docs |
+| **DRIVE** | Future: GPU support, save interpretations, multi-lens analysis, batch processing |
 
 ---
 
@@ -119,10 +136,10 @@ streamlit run app.py
 
 ```
 what-do-those-song-lyrics-mean-gui/
-├── app.py                    # Main Streamlit application
+├── app.py                    # Main Streamlit application with dual AI modes
 ├── scraper.py                # YouTube scraping module
-├── requirements.txt          # Python dependencies
-├── .env.example             # API key template
+├── requirements.txt          # Python dependencies (includes PyTorch CPU + transformers)
+├── .env.example             # Optional API key template
 ├── song_meaning_gui.bat     # Windows launch script
 ├── song_meaning_gui.sh      # macOS/Linux launch script
 ├── README.md                # This file
@@ -131,15 +148,16 @@ what-do-those-song-lyrics-mean-gui/
 
 ---
 
-## 🔑 Environment Variables
+## 🔑 Environment Variables (Optional)
 
-Create a `.env` file (optional) to avoid entering API key each time:
+Create a `.env` file to set default mode:
 
 ```env
+# Optional: Set Groq key to default to cloud mode
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Or use the sidebar input in the app (recommended for security).
+If not set, app defaults to local CPU mode (no key needed).
 
 ---
 
@@ -147,22 +165,27 @@ Or use the sidebar input in the app (recommended for security).
 
 ### Dependencies
 - **streamlit**: Web UI framework
-- **groq**: Free LLM API client (Llama 3.1)
+- **groq** (optional): Free cloud LLM API client
 - **playwright**: Browser automation for YouTube search
 - **youtube-transcript-api**: Extract video captions
+- **transformers**: Hugging Face models for local inference
+- **torch**: PyTorch CPU for local model execution
 - **python-dotenv**: Environment variable management
 
-### Scraping Logic
-1. **URL Detection**: Parses YouTube/YouTube Music URLs
-2. **Video ID Extraction**: Supports multiple URL formats
-3. **Caption Retrieval**: Fetches manual or auto-generated transcripts
-4. **Search Fallback**: If song name provided, searches YouTube first
+### AI Models
 
-### AI Model
+#### Local Mode (Default)
+- **Model**: `google/flan-t5-small` (~80MB)
+- **Device**: CPU only (no GPU required)
+- **First Run**: Downloads model automatically
+- **Speed**: ~5-15 seconds per interpretation (CPU-dependent)
+- **Quality**: Good for basic analysis
+
+#### Cloud Mode (Optional)
 - **Model**: `llama-3.1-70b-versatile` (Groq)
 - **Free Tier**: 30 requests/min, 6000 tokens/min
-- **Temperature**: 0.5 (balanced creativity/accuracy)
-- **Max Tokens**: 600 (concise interpretations)
+- **Speed**: ~1-3 seconds per interpretation
+- **Quality**: Excellent, detailed analysis
 
 ---
 
