@@ -9,12 +9,19 @@ import re
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import (
-    NoTranscriptFound,
-    TranscriptsDisabled,
-    VideoUnavailable,
-)
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi
+    from youtube_transcript_api._errors import (
+        NoTranscriptFound,
+        TranscriptsDisabled,
+        VideoUnavailable,
+    )
+except ImportError:
+    # Fallback for older versions
+    from youtube_transcript_api import YouTubeTranscriptApi
+    NoTranscriptFound = Exception
+    TranscriptsDisabled = Exception
+    VideoUnavailable = Exception
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -75,18 +82,10 @@ def get_youtube_captions(video_id: str) -> Optional[str]:
         Concatenated transcript text or None if unavailable
     """
     try:
-        # Try to get transcript (prefer manual over auto-generated)
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        # Get transcript directly (simpler API call)
+        transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'en-US'])
         
-        # Try manual transcripts first
-        try:
-            transcript = transcript_list.find_manually_created_transcript(['en'])
-        except:
-            # Fall back to auto-generated
-            transcript = transcript_list.find_generated_transcript(['en'])
-        
-        # Fetch and concatenate all transcript segments
-        transcript_data = transcript.fetch()
+        # Concatenate all transcript segments
         full_text = ' '.join([entry['text'] for entry in transcript_data])
         
         # Clean up the text
@@ -95,15 +94,17 @@ def get_youtube_captions(video_id: str) -> Optional[str]:
         logger.info(f"Successfully retrieved captions for video ID: {video_id}")
         return full_text
         
-    except (NoTranscriptFound, TranscriptsDisabled):
-        logger.warning(f"No transcript available for video ID: {video_id}")
-        return None
-    except VideoUnavailable:
-        logger.error(f"Video unavailable: {video_id}")
-        return None
     except Exception as e:
-        logger.error(f"Error retrieving captions: {e}")
-        return None
+        # Try to get any available transcript if English fails
+        try:
+            transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
+            full_text = ' '.join([entry['text'] for entry in transcript_data])
+            full_text = full_text.replace('\n', ' ').strip()
+            logger.info(f"Retrieved non-English captions for video ID: {video_id}")
+            return full_text
+        except Exception as e2:
+            logger.error(f"Error retrieving captions: {e}")
+            return None
 
 
 def search_youtube_for_song(song_name: str, artist: str = "") -> Optional[str]:
