@@ -13,7 +13,7 @@ from typing import Optional
 import streamlit as st
 from dotenv import load_dotenv
 
-from scraper import get_lyrics_from_input
+from scraper_v2 import get_lyrics_from_input
 from hardware import detect_hardware, get_compatible_models, get_recommended_model, HardwareSpecs
 
 # Load environment variables
