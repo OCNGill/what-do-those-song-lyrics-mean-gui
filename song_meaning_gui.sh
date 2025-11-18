@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================"
-echo "Song Lyric Explainer - Starting..."
+echo "What Do Those Song Lyrics Mean? - Starting..."
 echo "============================================"
 echo ""
 
@@ -56,13 +56,20 @@ python -m pip install --quiet --disable-pip-version-check -r requirements.txt ||
 }
 echo "[OK] Dependencies installed"
 
+# Install Playwright browsers
+echo "[INFO] Installing Playwright browsers (one-time setup)..."
+playwright install chromium || {
+    echo "[WARNING] Playwright browser installation failed. Scraping may not work."
+}
+echo "[OK] Playwright browsers installed"
+
 # Launch Streamlit and open browser
 echo ""
 echo "============================================"
 echo "Starting Streamlit app..."
 echo "Your browser should open to http://localhost:8501"
 echo ""
-echo "Enter your OpenAI API key in the sidebar."
+echo "Get your FREE Groq API key at: https://console.groq.com"
 echo ""
 echo "Press Ctrl+C to stop the server."
 echo "============================================"

@@ -1,4 +1,8 @@
-"""Song lyric explainer Streamlit app following 7D Agile guardrails."""
+"""
+What Do Those Song Lyrics Mean? - Streamlit App
+Uses Groq (free LLM) and YouTube scraping to find and interpret song lyrics.
+Following 7D Agile: Discover, Define, Design, Develop, Debug, Deploy, Drive.
+"""
 from __future__ import annotations
 
 import logging
@@ -6,19 +10,16 @@ import os
 from textwrap import dedent
 
 import streamlit as st
-from openai import OpenAI
+from dotenv import load_dotenv
+from groq import Groq
 
-APP_NAME = "Song Lyric Explainer"
-MODEL_NAME = "gpt-4o-mini"
-PHASES = [
-    ("DEFINE", "Capture the user intent"),
-    ("DESIGN", "Frame an explainable prompt"),
-    ("DEVELOP", "Call the LLM cleanly"),
-    ("DEBUG", "Expose rich error messages"),
-    ("DOCUMENT", "Log insights for the storyteller"),
-    ("DELIVER", "Render friendly UI copy"),
-    ("DEPLOY", "Keep config ready for future LLMs"),
-]
+from scraper import get_lyrics_from_input
+
+# Load environment variables
+load_dotenv()
+
+APP_NAME = "What Do Those Song Lyrics Mean?"
+MODEL_NAME = "llama-3.1-70b-versatile"  # Groq's free model
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,110 +28,166 @@ logging.basicConfig(
 
 
 @st.cache_resource(show_spinner=False)
-def _build_openai_client(api_key: str) -> OpenAI:
-    return OpenAI(api_key=api_key)
+def get_groq_client(api_key: str) -> Groq:
+    """Initialize Groq client with API key."""
+    return Groq(api_key=api_key)
 
 
-def get_client(api_key: str) -> OpenAI | None:
-    if not api_key:
-        return None
-    try:
-        return _build_openai_client(api_key)
-    except Exception as exc:  # pragma: no cover - defensive
-        logging.exception("Unable to initialize OpenAI client")
-        st.error("Could not initialize OpenAI client. Check the key and try again.")
-        st.caption(f"Details: {exc}")
-        return None
-
-
-def explain_lyrics(client: OpenAI, lyrics: str) -> str:
+def interpret_lyrics(client: Groq, lyrics: str) -> str:
+    """
+    Send lyrics to Groq LLM for interpretation.
+    
+    Args:
+        client: Groq API client
+        lyrics: Song lyrics text
+        
+    Returns:
+        AI-generated interpretation
+    """
     system_msg = dedent(
         """
-        You are a Grammy-winning musicologist who explains song lyrics with empathy,
-        cultural context, and literary analysis. Provide: (1) a concise synopsis,
-        (2) two thematic insights, and (3) one question for class discussion.
-        Keep it under 200 words and avoid speculation beyond the provided lyrics.
+        You are a knowledgeable music analyst who explains song lyrics with depth,
+        cultural context, and empathy. Provide:
+        1. A brief synopsis of the song's theme
+        2. Key symbolic or metaphorical meanings
+        3. The emotional or social message conveyed
+        
+        Keep your response clear, insightful, and under 300 words.
         """
     ).strip()
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        temperature=0.4,
-        max_tokens=500,
-        messages=[
-            {"role": "system", "content": system_msg},
-            {
-                "role": "user",
-                "content": f"Please explain the following lyrics:\n\n{lyrics.strip()}",
-            },
-        ],
-    )
-    return response.choices[0].message.content.strip()
+    
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0.5,
+            max_tokens=600,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Please interpret these song lyrics:\n\n{lyrics[:4000]}"},
+            ],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error(f"Groq API error: {e}")
+        raise
 
 
 def render_sidebar() -> str:
+    """Render sidebar with API key input and instructions."""
     with st.sidebar:
-        st.header("How to use")
+        st.header("🎵 How to Use")
         st.markdown(
             """
-            1. Enter your OpenAI API key below.
-            2. Paste any verse or chorus into the main panel.
-            3. Click **Explain lyrics** and review the insights.
+            **Step 1:** Get your free Groq API key:
+            - Visit [console.groq.com](https://console.groq.com)
+            - Sign up (free)
+            - Copy your API key
+            
+            **Step 2:** Enter song info:
+            - Paste YouTube/YouTube Music URL, OR
+            - Type "Artist - Song Name"
+            
+            **Step 3:** Click "Get Lyrics & Interpret"
             """
         )
         st.divider()
+        
+        # Check for API key in environment or session state
+        default_key = os.getenv("GROQ_API_KEY", "")
+        if "groq_api_key" in st.session_state:
+            default_key = st.session_state.groq_api_key
+        
         api_key = st.text_input(
-            "OpenAI API Key",
+            "Groq API Key",
             type="password",
-            placeholder="sk-...",
-            help="Your API key is never stored. It's only used for this session."
+            value=default_key,
+            placeholder="gsk_...",
+            help="Free API key from console.groq.com"
         )
+        
+        # Store in session state
+        if api_key:
+            st.session_state.groq_api_key = api_key
+        
         st.divider()
-        st.subheader("Need lyrics?")
-        st.link_button("🎵 Find Lyrics", "https://www.lyrics.com/", use_container_width=True)
+        st.caption("💡 **Examples:**")
+        st.code("Radiohead - Karma Police", language=None)
+        st.code("https://youtu.be/dQw4w9WgXcQ", language=None)
+        
         st.divider()
         st.image("Gillsystems_logo_with_donation_qrcodes.png", use_container_width=True)
+        
         return api_key
 
 
 def main() -> None:
+    """Main Streamlit app."""
     st.set_page_config(
         page_title=APP_NAME,
         page_icon="🎧",
         layout="centered",
     )
+    
     api_key = render_sidebar()
 
-    st.title(f"{APP_NAME} · 7D Edition")
-    st.write(
-        "Give your class a lively breakdown of what those lyrics really mean."
+    st.title(APP_NAME)
+    st.markdown(
+        "🎵 **Find song lyrics from YouTube and get AI-powered interpretations** — no ads, no paywalls!"
     )
 
-    lyrics = st.text_area(
-        "Paste lyrics",
-        height=240,
-        placeholder="Enter a verse, chorus, or full song...",
+    # User input
+    user_input = st.text_input(
+        "Enter song name or YouTube URL:",
+        placeholder="Artist - Song Name  OR  https://youtube.com/watch?v=...",
+        help="Examples: 'The Beatles - Let It Be' or paste a YouTube link"
     )
     
-    if st.button("Explain lyrics", type="primary"):
-        if not lyrics.strip():
-            st.warning("Please add some lyrics before requesting an explanation.")
+    # Main action button
+    if st.button("🔍 Get Lyrics & Interpret", type="primary"):
+        if not user_input.strip():
+            st.warning("⚠️ Please enter a song name or URL.")
             return
+        
         if not api_key:
-            st.error("Please enter your OpenAI API key in the sidebar.")
+            st.error("❌ Please enter your Groq API key in the sidebar.")
+            st.info("Get a free key at: https://console.groq.com")
             return
-        client = get_client(api_key)
-        if client is None:
-            st.stop()
-        with st.spinner("Composing your explainer..."):
+        
+        # Step 1: Scrape lyrics
+        with st.spinner("🔎 Searching for lyrics..."):
+            lyrics, status = get_lyrics_from_input(user_input)
+        
+        st.info(status)
+        
+        if not lyrics:
+            st.error("Could not retrieve lyrics. Try a different search or URL.")
+            return
+        
+        # Display lyrics in expandable section
+        with st.expander("📜 View Lyrics", expanded=True):
+            st.text_area(
+                "Extracted Lyrics:",
+                value=lyrics,
+                height=300,
+                disabled=True
+            )
+        
+        # Step 2: Interpret with Groq
+        with st.spinner("🤖 Generating interpretation with Groq AI..."):
             try:
-                explanation = explain_lyrics(client, lyrics)
-                st.success("Here is your story-ready explainer.")
-                st.markdown(explanation)
-                logging.info("Explanation generated successfully")
-            except Exception as exc:  # pragma: no cover - defensive
-                st.error("We hit a snag while talking to OpenAI.")
+                client = get_groq_client(api_key)
+                interpretation = interpret_lyrics(client, lyrics)
+                
+                st.success("✅ Interpretation Complete!")
+                st.markdown("### 🎭 What Do These Lyrics Mean?")
+                st.markdown(interpretation)
+                
+                logging.info(f"Successfully interpreted lyrics for: {user_input}")
+                
+            except Exception as exc:
+                st.error("❌ Error communicating with Groq API.")
                 st.caption(f"Details: {exc}")
-                logging.exception("OpenAI request failed")
+                logging.exception("Groq API request failed")
 
 
 if __name__ == "__main__":

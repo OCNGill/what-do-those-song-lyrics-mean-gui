@@ -1,9 +1,8 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-@echo off
 echo ============================================
-echo Song Lyric Explainer - Starting...
+echo What Do Those Song Lyrics Mean? - Starting...
 echo ============================================
 echo.
 
@@ -17,8 +16,6 @@ if errorlevel 1 (
 )
 echo [OK] Python found
 
-echo [OK] Python found
-
 REM Ensure pip is installed
 python -m pip --version >nul 2>&1
 if errorlevel 1 (
@@ -30,8 +27,6 @@ if errorlevel 1 (
         exit /b 1
     )
 )
-echo [OK] pip found
-
 echo [OK] pip found
 
 REM Create virtual environment if missing
@@ -72,7 +67,14 @@ if errorlevel 1 (
 )
 echo [OK] Dependencies installed
 
-echo [OK] Dependencies installed
+REM Install Playwright browsers
+echo [INFO] Installing Playwright browsers (one-time setup)...
+playwright install chromium
+if errorlevel 1 (
+    echo [WARNING] Playwright browser installation failed. Scraping may not work.
+) else (
+    echo [OK] Playwright browsers installed
+)
 
 REM Launch Streamlit and open browser
 echo.
@@ -80,7 +82,7 @@ echo ============================================
 echo Starting Streamlit app...
 echo Your browser will open to http://localhost:8501
 echo.
-echo Enter your OpenAI API key in the sidebar.
+echo Get your FREE Groq API key at: https://console.groq.com
 echo.
 echo Press Ctrl+C to stop the server.
 echo ============================================
