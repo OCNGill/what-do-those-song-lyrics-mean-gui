@@ -356,8 +356,8 @@ def get_spotify_track_info(track_id: str) -> Tuple[Optional[str], Optional[str]]
         import spotipy
         from spotipy.oauth2 import SpotifyClientCredentials
         
-        # Try without credentials first (limited functionality)
-        sp = spotipy.Spotify()
+        auth_manager = SpotifyClientCredentials()
+        sp = spotipy.Spotify(auth_manager=auth_manager)
         
         track = sp.track(track_id)
         track_name = track['name']

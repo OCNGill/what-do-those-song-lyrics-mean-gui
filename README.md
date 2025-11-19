@@ -189,6 +189,10 @@ GROQ_API_KEY=your_groq_api_key_here
 
 # Optional: Add Genius API token for additional lyrics sources
 GENIUS_ACCESS_TOKEN=your_genius_token_here
+
+# Optional: Add Spotify credentials for better track info extraction
+SPOTIPY_CLIENT_ID=your_spotify_client_id
+SPOTIPY_CLIENT_SECRET=your_spotify_client_secret
 ```
 
 If `GROQ_API_KEY` is not set, app defaults to local CPU mode (lower quality).
@@ -267,7 +271,7 @@ playwright install chromium
 
 - [ ] Save interpretations to JSON with metadata
 - [ ] Multiple interpretation "lenses" (personal, critical, spiritual)
-- [ ] Spotify metadata extraction
+- [x] Spotify metadata extraction
 - [ ] Batch processing for playlists
 - [ ] Export to PDF/Markdown
 
