@@ -13,3 +13,4 @@ lyricsgenius>=3.7.5
 beautifulsoup4>=4.14.0
 lxml>=6.0.0
 requests>=2.32.0
+spotipy>=2.23.0
