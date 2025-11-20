@@ -129,21 +129,62 @@ def interpret_lyrics_local(model, lyrics: str) -> str:
         Lyrics:
         {lyrics[:1500]}
         
-        Interpretation:
+        Analysis:
         """
     ).strip()
     
     try:
-        result = model(prompt, max_length=300, do_sample=False)
-        interpretation = result[0]['generated_text'].strip()
-        
-        if "Interpretation:" in interpretation:
-            interpretation = interpretation.split("Interpretation:")[-1].strip()
-        
-        return interpretation if interpretation else "Unable to generate interpretation."
+        result = model(prompt, max_length=512, do_sample=False)
+        return result[0]["generated_text"]
     except Exception as e:
-        logging.error(f"Local model error: {e}")
-        return f"Error generating interpretation: {str(e)}"
+        logging.error(f"Local inference error: {e}")
+        return "Error generating interpretation locally."
+
+
+def answer_question_groq(client, lyrics: str, question: str) -> str:
+    """Answer a question about the lyrics using Groq."""
+    system_msg = dedent(
+        """
+        You are a knowledgeable music analyst. Answer the user's question about the song lyrics provided.
+        Use the lyrics as your primary source. Be concise and helpful.
+        """
+    ).strip()
+    
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL_NAME,
+            temperature=0.5,
+            max_tokens=400,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Lyrics:\n{lyrics[:4000]}\n\nQuestion: {question}"},
+            ],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error(f"Groq API error: {e}")
+        raise
+
+
+def answer_question_local(model, lyrics: str, question: str) -> str:
+    """Answer a question about the lyrics using local model."""
+    prompt = dedent(
+        f"""
+        Lyrics:
+        {lyrics[:1500]}
+        
+        Question: {question}
+        
+        Answer:
+        """
+    ).strip()
+    
+    try:
+        result = model(prompt, max_length=512, do_sample=False)
+        return result[0]["generated_text"]
+    except Exception as e:
+        logging.error(f"Local inference error: {e}")
+        return "Error generating answer locally."
 
 
 def render_sidebar() -> tuple[Optional[str], str, bool]:
@@ -279,6 +320,12 @@ def main() -> None:
         layout="centered",
     )
     
+    # Initialize session state for lyrics and interpretation
+    if "current_lyrics" not in st.session_state:
+        st.session_state.current_lyrics = None
+    if "current_interpretation" not in st.session_state:
+        st.session_state.current_interpretation = None
+    
     api_key, mode, use_gpu = render_sidebar()
 
     st.title(APP_NAME)
@@ -287,7 +334,7 @@ def main() -> None:
     )
 
     # Input mode tabs
-    tab1, tab2 = st.tabs(["🔍 Search/Scrape", "📝 Manual Input"])
+    tab1, tab2, tab3 = st.tabs(["🔍 Search/Scrape", "📝 Manual Input", "💬 Q&A"])
     
     with tab1:
         st.subheader("Search for Lyrics")
@@ -298,7 +345,6 @@ def main() -> None:
             key="search_input"
         )
         scrape_button = st.button("🔍 Get Lyrics & Interpret", type="primary", key="scrape_btn")
-        lyrics_source = "scraped"
     
     with tab2:
         st.subheader("Paste Lyrics Manually")
@@ -310,96 +356,123 @@ def main() -> None:
             key="manual_input"
         )
         manual_button = st.button("🎭 Interpret These Lyrics", type="primary", key="manual_btn")
-        lyrics_source = "manual"
     
-    # Process based on which button was clicked
-    lyrics = None
-    process = False
+    # Process inputs
+    process_interpretation = False
     
     if scrape_button and user_input.strip():
-        process = True
         with st.spinner("🔎 Searching for lyrics..."):
             lyrics, status = get_lyrics_from_input(user_input)
         st.info(status)
         
-        if not lyrics:
+        if lyrics:
+            st.session_state.current_lyrics = lyrics
+            st.session_state.current_interpretation = None # Reset interpretation
+            process_interpretation = True
+        else:
             st.error("Could not retrieve lyrics. Try a different search or URL, or use Manual Input tab.")
-            return
     
     elif manual_button and manual_lyrics.strip():
-        process = True
-        lyrics = manual_lyrics.strip()
+        st.session_state.current_lyrics = manual_lyrics.strip()
+        st.session_state.current_interpretation = None
         st.success("✓ Using your manually entered lyrics")
+        process_interpretation = True
     
-    if not process:
-        return
-    
-    # Display lyrics
-    with st.expander("📜 View Lyrics", expanded=True):
-        st.text_area(
-            "Lyrics:",
-            value=lyrics,
-            height=250,
-            disabled=True,
-            key="lyrics_display"
-        )
-    
-    # Interpret
-    if mode == "Cloud (Groq API)":
-        if not api_key:
-            st.error("❌ Please enter your Groq API key in the sidebar.")
-            st.info("Get a free key at: https://console.groq.com")
-            return
-        
-        with st.spinner("🤖 Generating interpretation with Groq AI..."):
-            try:
-                client = get_groq_client(api_key)
-                if lyrics:
-                    interpretation = interpret_lyrics_groq(client, lyrics)
-                    
-                    st.success("✅ Interpretation Complete! (Groq Cloud)")
-                    st.markdown("### 🎭 What Do These Lyrics Mean?")
-                    st.markdown(interpretation)
-                    logging.info("Successfully interpreted with Groq")
+    # Display lyrics if available
+    if st.session_state.current_lyrics:
+        with st.expander("📜 View Lyrics", expanded=True):
+            st.text_area(
+                "Lyrics:",
+                value=st.session_state.current_lyrics,
+                height=250,
+                disabled=True,
+                key="lyrics_display"
+            )
+            
+        # Interpret if requested
+        if process_interpretation:
+            if mode == "Cloud (Groq API)":
+                if not api_key:
+                    st.error("❌ Please enter your Groq API key in the sidebar.")
+                    st.info("Get a free key at: https://console.groq.com")
                 else:
-                    st.error("❌ No lyrics to interpret.")
-                
-            except Exception as exc:
-                st.error("❌ Error communicating with Groq API.")
-                st.caption(f"Details: {exc}")
-                logging.exception("Groq API request failed")
-    
-    else:  # Local model
-        if not st.session_state.selected_model:
-            st.error("❌ Please select a model in the sidebar or detect hardware first.")
-            return
-        
-        model_id = st.session_state.selected_model
-        
-        with st.spinner(f"🤖 Loading model: {model_id} (first run may take time)..."):
-            local_model = load_hf_model(model_id, use_gpu)
-        
-        if not local_model:
-            st.error("❌ Failed to load model. Try a different model or cloud mode.")
-            return
-        
-        with st.spinner("💻 Generating interpretation..."):
-            try:
-                if lyrics:
-                    interpretation = interpret_lyrics_local(local_model, lyrics)
-                    
-                    device_info = "GPU" if use_gpu else "CPU"
-                    st.success(f"✅ Interpretation Complete! (Local {device_info} - {model_id})")
-                    st.markdown("### 🎭 What Do These Lyrics Mean?")
-                    st.markdown(interpretation)
+                    with st.spinner("🤖 Generating interpretation with Groq AI..."):
+                        try:
+                            client = get_groq_client(api_key)
+                            interpretation = interpret_lyrics_groq(client, st.session_state.current_lyrics)
+                            st.session_state.current_interpretation = interpretation
+                            logging.info("Successfully interpreted with Groq")
+                        except Exception as exc:
+                            st.error("❌ Error communicating with Groq API.")
+                            st.caption(f"Details: {exc}")
+                            logging.exception("Groq API request failed")
+            
+            else:  # Local model
+                if not st.session_state.selected_model:
+                    st.error("❌ Please select a model in the sidebar or detect hardware first.")
                 else:
-                    st.error("❌ No lyrics to interpret.")
-                logging.info(f"Successfully interpreted with {model_id}")
-                
-            except Exception as exc:
-                st.error("❌ Error with local model.")
-                st.caption(f"Details: {exc}")
-                logging.exception("Local model failed")
+                    model_id = st.session_state.selected_model
+                    with st.spinner(f"🤖 Loading model: {model_id} (first run may take time)..."):
+                        local_model = load_hf_model(model_id, use_gpu)
+                    
+                    if local_model:
+                        with st.spinner("💻 Generating interpretation..."):
+                            try:
+                                interpretation = interpret_lyrics_local(local_model, st.session_state.current_lyrics)
+                                st.session_state.current_interpretation = interpretation
+                                logging.info(f"Successfully interpreted with {model_id}")
+                            except Exception as exc:
+                                st.error("❌ Error with local model.")
+                                st.caption(f"Details: {exc}")
+                                logging.exception("Local model failed")
+
+        # Display interpretation if available
+        if st.session_state.current_interpretation:
+            st.success("✅ Interpretation Complete!")
+            st.markdown("### 🎭 What Do These Lyrics Mean?")
+            st.markdown(st.session_state.current_interpretation)
+
+    # Q&A Tab Logic
+    with tab3:
+        st.subheader("Ask a Question about the Lyrics")
+        if not st.session_state.current_lyrics:
+            st.info("Please search for or enter lyrics in the other tabs first.")
+        else:
+            question = st.text_input("Ask a question:", placeholder="e.g., What does the second verse mean?")
+            if st.button("Ask Question", type="primary"):
+                if not question.strip():
+                    st.warning("Please enter a question.")
+                else:
+                    if mode == "Cloud (Groq API)":
+                        if not api_key:
+                            st.error("❌ Please enter your Groq API key in the sidebar.")
+                        else:
+                            with st.spinner("🤖 Asking Groq AI..."):
+                                try:
+                                    client = get_groq_client(api_key)
+                                    answer = answer_question_groq(client, st.session_state.current_lyrics, question)
+                                    st.markdown("### 🤖 Answer")
+                                    st.markdown(answer)
+                                except Exception as exc:
+                                    st.error("❌ Error communicating with Groq API.")
+                                    st.caption(f"Details: {exc}")
+                    else:
+                        if not st.session_state.selected_model:
+                            st.error("❌ Please select a model in the sidebar.")
+                        else:
+                            model_id = st.session_state.selected_model
+                            with st.spinner(f"🤖 Loading model: {model_id}..."):
+                                local_model = load_hf_model(model_id, use_gpu)
+                            
+                            if local_model:
+                                with st.spinner("💻 Generating answer..."):
+                                    try:
+                                        answer = answer_question_local(local_model, st.session_state.current_lyrics, question)
+                                        st.markdown("### 🤖 Answer")
+                                        st.markdown(answer)
+                                    except Exception as exc:
+                                        st.error("❌ Error with local model.")
+                                        st.caption(f"Details: {exc}")
 
 
 if __name__ == "__main__":
