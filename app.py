@@ -256,6 +256,16 @@ def render_sidebar() -> tuple[Optional[str], str, bool]:
         st.code("https://youtu.be/dQw4w9WgXcQ", language=None)
         
         st.divider()
+        
+        # External Lyrics Links
+        st.caption("🔗 **External Lyrics Sites:**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.link_button("AZLyrics", "https://www.azlyrics.com", use_container_width=True)
+        with col2:
+            st.link_button("Genius", "https://genius.com", use_container_width=True)
+            
+        st.divider()
         st.image("Gillsystems_logo_with_donation_qrcodes.png", use_container_width=True)
         
         return api_key, mode, use_gpu if not use_cloud else False
@@ -344,12 +354,15 @@ def main() -> None:
         with st.spinner("🤖 Generating interpretation with Groq AI..."):
             try:
                 client = get_groq_client(api_key)
-                interpretation = interpret_lyrics_groq(client, lyrics)
-                
-                st.success("✅ Interpretation Complete! (Groq Cloud)")
-                st.markdown("### 🎭 What Do These Lyrics Mean?")
-                st.markdown(interpretation)
-                logging.info("Successfully interpreted with Groq")
+                if lyrics:
+                    interpretation = interpret_lyrics_groq(client, lyrics)
+                    
+                    st.success("✅ Interpretation Complete! (Groq Cloud)")
+                    st.markdown("### 🎭 What Do These Lyrics Mean?")
+                    st.markdown(interpretation)
+                    logging.info("Successfully interpreted with Groq")
+                else:
+                    st.error("❌ No lyrics to interpret.")
                 
             except Exception as exc:
                 st.error("❌ Error communicating with Groq API.")
@@ -372,12 +385,15 @@ def main() -> None:
         
         with st.spinner("💻 Generating interpretation..."):
             try:
-                interpretation = interpret_lyrics_local(local_model, lyrics)
-                
-                device_info = "GPU" if use_gpu else "CPU"
-                st.success(f"✅ Interpretation Complete! (Local {device_info} - {model_id})")
-                st.markdown("### 🎭 What Do These Lyrics Mean?")
-                st.markdown(interpretation)
+                if lyrics:
+                    interpretation = interpret_lyrics_local(local_model, lyrics)
+                    
+                    device_info = "GPU" if use_gpu else "CPU"
+                    st.success(f"✅ Interpretation Complete! (Local {device_info} - {model_id})")
+                    st.markdown("### 🎭 What Do These Lyrics Mean?")
+                    st.markdown(interpretation)
+                else:
+                    st.error("❌ No lyrics to interpret.")
                 logging.info(f"Successfully interpreted with {model_id}")
                 
             except Exception as exc:

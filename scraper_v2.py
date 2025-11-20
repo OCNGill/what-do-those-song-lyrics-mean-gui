@@ -449,10 +449,11 @@ def get_lyrics_from_input(user_input: str) -> Tuple[Optional[str], str]:
             if lyrics:
                 return lyrics, f"✅ Found lyrics for: {artist_name} - {track_name}"
             
-            return None, f"❌ Found Spotify track '{artist_name} - {track_name}' but couldn't find lyrics"
-        else:
-            # Spotify metadata not available, inform user
-            return None, "❌ Spotify requires authentication. Please use 'Artist - Song Name' format instead."
+            # Fallback to AZLyrics direct search (using search_lyrics_extractor which scrapes AZLyrics)
+            # Note: search_lyrics_extractor already scrapes AZLyrics, so we just return failure if it fails
+            return None, f"❌ Could not find lyrics for: {artist_name} - {track_name}"
+        
+        return None, "❌ Could not get track info from Spotify (check credentials)"
     
     # Assume it's a song name/artist search
     else:
