@@ -292,19 +292,12 @@ def render_sidebar() -> tuple[Optional[str], str, bool]:
                 st.warning(f"⚠️ Using custom model: {custom_model}")
         
         st.divider()
-        st.caption("💡 **Examples:**")
-        st.code("Radiohead - Karma Police", language=None)
-        st.code("https://youtu.be/dQw4w9WgXcQ", language=None)
         
-        st.divider()
-        
-        # External Lyrics Links
-        st.caption("🔗 **External Lyrics Sites:**")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.link_button("AZLyrics", "https://www.azlyrics.com", use_container_width=True)
-        with col2:
-            st.link_button("Genius", "https://genius.com", use_container_width=True)
+        # Reset Button
+        if st.button("🔄 Reset App", use_container_width=True):
+            st.session_state.current_lyrics = None
+            st.session_state.current_interpretation = None
+            st.rerun()
             
         st.divider()
         st.image("Gillsystems_logo_with_donation_qrcodes.png", use_container_width=True)
@@ -428,9 +421,11 @@ def main() -> None:
 
         # Display interpretation if available
         if st.session_state.current_interpretation:
+            st.divider()
             st.success("✅ Interpretation Complete!")
             st.markdown("### 🎭 What Do These Lyrics Mean?")
             st.markdown(st.session_state.current_interpretation)
+            st.divider()
 
     # Q&A Tab Logic
     with tab3:
@@ -473,6 +468,10 @@ def main() -> None:
                                     except Exception as exc:
                                         st.error("❌ Error with local model.")
                                         st.caption(f"Details: {exc}")
+    
+    # Footer
+    st.markdown("---")
+    st.caption("Built with ❤️ following **7D Agile** principles | © 2025 Gillsystems")
 
 
 if __name__ == "__main__":
